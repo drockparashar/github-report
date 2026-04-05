@@ -16,7 +16,7 @@
         <p class="kicker">Internship tooling</p>
         <h1>GitHub to Report in Minutes</h1>
         <p class="hero-copy">
-          Pull your commit history, summarize work by feature with Gemini 1.5 Flash,
+          Pull your commit history, summarize work by feature with Gemini 2.5 Flash,
           and export a polished internship report in Markdown.
         </p>
       </header>
@@ -33,7 +33,7 @@
             <label class="field" for="gemini-key">
               <span>Gemini API Key</span>
               <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
-              <small>Used for gemini-1.5-flash analysis.</small>
+              <small>Used for gemini-2.5-flash analysis.</small>
             </label>
 
             <label class="field" for="repo-url">
@@ -70,6 +70,14 @@
         <div class="progress-track" aria-hidden="true">
           <div id="progress-fill" class="progress-fill"></div>
         </div>
+      </section>
+
+      <section class="panel preview-panel" aria-label="Payload preview">
+        <div class="output-header">
+          <h2>Compact Payload Preview</h2>
+        </div>
+        <p id="preview-meta" class="summary-line">Preview appears after commit extraction.</p>
+        <pre id="payload-preview" class="json-preview" tabindex="0">[]</pre>
       </section>
 
       <section class="panel output-panel" aria-label="Generated features">

@@ -1,5 +1,5 @@
 const GITHUB_API_BASE = "https://api.github.com";
-const GEMINI_MODEL = "gemini-1.5-flash";
+const GEMINI_MODEL = "gemini-2.5-flash";
 const GEMINI_API_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
 const MAX_COMMITS = 100;
@@ -8,6 +8,9 @@ const PATCH_LIMIT = 500;
 const MESSAGE_LIMIT = 300;
 const BATCH_SIZE = 6;
 const COMMIT_FETCH_DELAY_MS = 100;
+const PREVIEW_COMMIT_LIMIT = 12;
+const RETRY_MAX_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 300;
 
 const appState = {
   running: false,
@@ -31,6 +34,8 @@ const els = {
   summaryLine: document.getElementById("summary-line"),
   copyMarkdownBtn: document.getElementById("copy-markdown-btn"),
   featureTemplate: document.getElementById("feature-card-template"),
+  previewMeta: document.getElementById("preview-meta"),
+  payloadPreview: document.getElementById("payload-preview"),
 };
 
 els.form.addEventListener("submit", onGenerateReport);
@@ -62,6 +67,8 @@ function setStatus(message, percent = null, level = "info") {
 function clearResults() {
   els.featureList.innerHTML = "";
   els.summaryLine.textContent = "No report generated yet.";
+  els.previewMeta.textContent = "Preview appears after commit extraction.";
+  els.payloadPreview.textContent = "[]";
   appState.currentReport = null;
   appState.lastError = null;
 }
@@ -132,6 +139,66 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function isTransientStatus(status) {
+  return [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
+}
+
+function isTransientError(error) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  if (error.name === "TypeError") {
+    return true;
+  }
+
+  return /network|fetch|timeout/i.test(error.message);
+}
+
+function backoffDelay(baseMs, attempt) {
+  const exponential = baseMs * 2 ** attempt;
+  const jitter = Math.floor(Math.random() * 120);
+  return exponential + jitter;
+}
+
+async function fetchWithRetry(url, options = {}, config = {}) {
+  const retries = config.retries ?? RETRY_MAX_RETRIES;
+  const baseDelayMs = config.baseDelayMs ?? RETRY_BASE_DELAY_MS;
+  const shouldRetryStatus = config.shouldRetryStatus ?? isTransientStatus;
+
+  let lastThrownError;
+
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      const response = await fetch(url, options);
+
+      if (response.ok) {
+        return response;
+      }
+
+      if (attempt < retries && shouldRetryStatus(response.status)) {
+        await sleep(backoffDelay(baseDelayMs, attempt));
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      lastThrownError = error;
+      if (attempt >= retries || !isTransientError(error)) {
+        throw error;
+      }
+
+      await sleep(backoffDelay(baseDelayMs, attempt));
+    }
+  }
+
+  if (lastThrownError) {
+    throw lastThrownError;
+  }
+
+  throw new Error("Request failed after retry attempts.");
+}
+
 function safeJsonParse(value) {
   try {
     return { ok: true, data: JSON.parse(value) };
@@ -165,9 +232,16 @@ async function fetchCommitsPage({
     url.searchParams.set("since", since);
   }
 
-  const res = await fetch(url, {
-    headers: buildGitHubHeaders(token),
-  });
+  const res = await fetchWithRetry(
+    url,
+    {
+      headers: buildGitHubHeaders(token),
+    },
+    {
+      shouldRetryStatus: (status) =>
+        isTransientStatus(status) || status === 403,
+    },
+  );
 
   if (!res.ok) {
     throw await toGitHubError(res);
@@ -178,9 +252,16 @@ async function fetchCommitsPage({
 
 async function fetchCommitDetails({ owner, repo, sha, token }) {
   const url = `${GITHUB_API_BASE}/repos/${owner}/${repo}/commits/${sha}`;
-  const res = await fetch(url, {
-    headers: buildGitHubHeaders(token),
-  });
+  const res = await fetchWithRetry(
+    url,
+    {
+      headers: buildGitHubHeaders(token),
+    },
+    {
+      shouldRetryStatus: (status) =>
+        isTransientStatus(status) || status === 403,
+    },
+  );
 
   if (!res.ok) {
     throw await toGitHubError(res);
@@ -287,6 +368,18 @@ function chunkArray(items, size) {
   return chunks;
 }
 
+function renderPayloadPreview(compactCommits) {
+  const shown = compactCommits.slice(0, PREVIEW_COMMIT_LIMIT);
+  const preview = {
+    totalCommits: compactCommits.length,
+    showing: shown.length,
+    commits: shown,
+  };
+
+  els.previewMeta.textContent = `Showing ${shown.length}/${compactCommits.length} compact commits before Gemini analysis.`;
+  els.payloadPreview.textContent = JSON.stringify(preview, null, 2);
+}
+
 function buildBatchPrompt(batchCommits) {
   return `You are analyzing Git commits from a software engineering internship.\nYour job is to identify distinct features or work items the developer built.\n\nCommits:\n${JSON.stringify(batchCommits, null, 2)}\n\nGroup related commits into features. Be technical and specific.\n\nReturn JSON only, in this exact structure:\n{\n  "features": [\n    {\n      "name": "Short feature name (3-6 words)",\n      "description": "2-3 sentences - what was built, how it works, why it matters",\n      "commits": ["abc1234", "def5678"],\n      "technologies": ["React", "PostgreSQL"],\n      "impact": "One sentence on business or technical impact"\n    }\n  ]\n}`;
 }
@@ -297,18 +390,24 @@ function buildMergePrompt(allFeatures) {
 
 async function generateJsonFromGemini({ apiKey, prompt }) {
   const endpoint = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
+  const res = await fetchWithRetry(
+    endpoint,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+    {
+      shouldRetryStatus: isTransientStatus,
+    },
+  );
 
   if (!res.ok) {
     const bodyText = await res.text();
@@ -536,6 +635,8 @@ async function onGenerateReport(event) {
       setStatus(`Fetching ${i + 1}/${list.length} commit details...`, pct);
       await sleep(COMMIT_FETCH_DELAY_MS);
     }
+
+    renderPayloadPreview(compactCommits);
 
     const features = await analyzeInBatches(compactCommits, geminiKey);
 

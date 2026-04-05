@@ -227,6 +227,27 @@ button:disabled {
   color: var(--ink-dim);
 }
 
+.json-preview {
+  margin: 10px 0 0;
+  padding: 14px;
+  max-height: 360px;
+  overflow: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(181, 201, 212, 0.22);
+  background: rgba(6, 18, 25, 0.9);
+  color: #bde9dc;
+  font:
+    12px/1.55 "Consolas",
+    "Courier New",
+    monospace;
+  white-space: pre;
+}
+
+.json-preview:focus-visible {
+  outline: 2px solid rgba(77, 224, 186, 0.55);
+  outline-offset: 2px;
+}
+
 .feature-list {
   display: grid;
   gap: 14px;

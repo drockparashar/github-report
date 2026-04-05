@@ -4,9 +4,10 @@ A single-page web app that:
 
 1. Fetches your commits from GitHub.
 2. Pulls commit-level diff patches.
-3. Sends compact commit summaries to Gemini 1.5 Flash in batches.
-4. Merges and deduplicates extracted features.
-5. Renders feature cards and exports a Markdown internship report.
+3. Shows a compact payload preview before AI analysis.
+4. Sends compact commit summaries to Gemini 2.5 Flash in batches.
+5. Merges and deduplicates extracted features.
+6. Renders feature cards and exports a Markdown internship report.
 
 ## Stack
 
@@ -14,7 +15,7 @@ A single-page web app that:
 - CSS
 - Vanilla JavaScript
 - GitHub REST API
-- Gemini 1.5 Flash API
+- Gemini 2.5 Flash API
 
 ## Run
 
@@ -37,7 +38,9 @@ No build step and no dependencies are required.
 - Patch text is capped at 500 characters per file.
 - Commit message is capped at 300 characters.
 - Batching uses 6 commits per Gemini call.
+- Payload preview shows compact commit JSON before Gemini analysis.
 - If a batch returns malformed JSON, that batch is skipped and processing continues.
+- Transient GitHub and Gemini failures are retried with exponential backoff.
 
 ## Common Errors
 
