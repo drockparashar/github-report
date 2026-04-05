@@ -139,7 +139,21 @@ input {
     box-shadow 200ms ease;
 }
 
+select {
+  width: 100%;
+  border: 1px solid rgba(181, 201, 212, 0.35);
+  border-radius: 10px;
+  background: rgba(5, 15, 21, 0.68);
+  color: var(--ink);
+  padding: 11px 12px;
+  font: inherit;
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
 input:focus-visible,
+select:focus-visible,
 button:focus-visible {
   outline: none;
   border-color: var(--accent);
@@ -183,6 +197,14 @@ button:disabled {
 .inline-note {
   margin: 0;
   color: var(--ink-dim);
+}
+
+.branch-step {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid rgba(181, 201, 212, 0.22);
+  border-radius: 12px;
+  background: rgba(5, 17, 24, 0.42);
 }
 
 .progress-meta {

@@ -11,6 +11,7 @@ const COMMIT_FETCH_DELAY_MS = 100;
 const PREVIEW_COMMIT_LIMIT = 12;
 const RETRY_MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 300;
+const MAX_BRANCHES = 200;
 const STORAGE_KEYS = {
   githubToken: "report.githubToken",
   geminiKey: "report.geminiKey",
@@ -20,6 +21,9 @@ const appState = {
   running: false,
   currentReport: null,
   lastError: null,
+  repoContext: null,
+  branches: [],
+  selectedBranch: "",
 };
 
 const els = {
@@ -30,7 +34,10 @@ const els = {
   author: document.getElementById("author-username"),
   sinceDate: document.getElementById("since-date"),
   untilDate: document.getElementById("until-date"),
+  branchStep: document.getElementById("branch-step"),
+  branchSelect: document.getElementById("branch-select"),
   inlineNote: document.getElementById("inline-note"),
+  loadBranchesBtn: document.getElementById("load-branches-btn"),
   generateBtn: document.getElementById("generate-btn"),
   statusText: document.getElementById("status-text"),
   progressText: document.getElementById("progress-text"),
@@ -45,16 +52,32 @@ const els = {
 };
 
 els.form.addEventListener("submit", onGenerateReport);
+els.loadBranchesBtn.addEventListener("click", onLoadBranches);
+els.branchSelect.addEventListener("change", onBranchSelectionChange);
 els.copyMarkdownBtn.addEventListener("click", onCopyMarkdown);
 els.downloadMarkdownBtn.addEventListener("click", onDownloadMarkdown);
+
+[els.repoUrl, els.githubToken].forEach((inputEl) => {
+  inputEl.addEventListener("input", () => clearBranchSelectionState(false));
+});
 
 restoreSavedKeys();
 
 function setRunningState(running) {
   appState.running = running;
+  els.loadBranchesBtn.disabled = running;
+  els.branchSelect.disabled = running || appState.branches.length === 0;
   els.generateBtn.disabled = running;
   els.copyMarkdownBtn.disabled = running || !appState.currentReport;
   els.downloadMarkdownBtn.disabled = running || !appState.currentReport;
+  updateGenerateButtonState();
+}
+
+function updateGenerateButtonState() {
+  els.generateBtn.disabled =
+    appState.running ||
+    !appState.selectedBranch ||
+    appState.branches.length === 0;
 }
 
 function setStatus(message, percent = null, level = "info") {
@@ -81,6 +104,42 @@ function clearResults() {
   els.payloadPreview.textContent = "[]";
   appState.currentReport = null;
   appState.lastError = null;
+  setRunningState(false);
+}
+
+function clearBranchSelectionState(clearMessage = true) {
+  appState.repoContext = null;
+  appState.branches = [];
+  appState.selectedBranch = "";
+  els.branchSelect.innerHTML = "";
+  els.branchStep.hidden = true;
+  updateGenerateButtonState();
+
+  if (clearMessage) {
+    els.inlineNote.textContent = "";
+  }
+}
+
+function populateBranchOptions(branches) {
+  els.branchSelect.innerHTML = "";
+
+  branches.forEach((branch) => {
+    const option = document.createElement("option");
+    option.value = branch.name;
+    option.textContent = branch.name;
+    els.branchSelect.append(option);
+  });
+
+  appState.branches = branches;
+  appState.selectedBranch = branches[0]?.name || "";
+  els.branchSelect.value = appState.selectedBranch;
+  els.branchStep.hidden = branches.length === 0;
+  updateGenerateButtonState();
+}
+
+function onBranchSelectionChange() {
+  appState.selectedBranch = els.branchSelect.value;
+  updateGenerateButtonState();
 }
 
 function parseRepoInput(rawInput) {
@@ -265,6 +324,7 @@ function buildGitHubHeaders(token) {
 async function fetchCommitsPage({
   owner,
   repo,
+  branch,
   author,
   since,
   until,
@@ -273,6 +333,9 @@ async function fetchCommitsPage({
   token,
 }) {
   const url = new URL(`${GITHUB_API_BASE}/repos/${owner}/${repo}/commits`);
+  if (branch) {
+    url.searchParams.set("sha", branch);
+  }
   url.searchParams.set("author", author);
   url.searchParams.set("per_page", String(perPage));
   url.searchParams.set("page", String(page));
@@ -299,6 +362,59 @@ async function fetchCommitsPage({
   }
 
   return res.json();
+}
+
+async function fetchBranchesPage({ owner, repo, page, perPage, token }) {
+  const url = new URL(`${GITHUB_API_BASE}/repos/${owner}/${repo}/branches`);
+  url.searchParams.set("per_page", String(perPage));
+  url.searchParams.set("page", String(page));
+
+  const res = await fetchWithRetry(
+    url,
+    {
+      headers: buildGitHubHeaders(token),
+    },
+    {
+      shouldRetryStatus: (status) =>
+        isTransientStatus(status) || status === 403,
+    },
+  );
+
+  if (!res.ok) {
+    throw await toGitHubError(res);
+  }
+
+  return res.json();
+}
+
+async function fetchRepoBranches({ owner, repo, token }) {
+  const branches = [];
+  let page = 1;
+  const perPage = 100;
+
+  while (branches.length < MAX_BRANCHES) {
+    const pageItems = await fetchBranchesPage({
+      owner,
+      repo,
+      page,
+      perPage,
+      token,
+    });
+
+    if (!Array.isArray(pageItems) || pageItems.length === 0) {
+      break;
+    }
+
+    branches.push(...pageItems);
+
+    if (pageItems.length < perPage) {
+      break;
+    }
+
+    page += 1;
+  }
+
+  return branches.slice(0, MAX_BRANCHES);
 }
 
 async function fetchCommitDetails({ owner, repo, sha, token }) {
@@ -347,7 +463,15 @@ async function toGitHubError(response) {
   );
 }
 
-async function collectCommits({ owner, repo, author, since, until, token }) {
+async function collectCommits({
+  owner,
+  repo,
+  branch,
+  author,
+  since,
+  until,
+  token,
+}) {
   const commits = [];
   let page = 1;
   const perPage = 100;
@@ -357,6 +481,7 @@ async function collectCommits({ owner, repo, author, since, until, token }) {
     const pageItems = await fetchCommitsPage({
       owner,
       repo,
+      branch,
       author,
       since,
       until,
@@ -598,9 +723,11 @@ function formatPeriod(commits) {
   return `${format.format(dates[0])} -> ${format.format(dates[dates.length - 1])}`;
 }
 
-function buildMarkdownReport({ owner, repo, commits, features }) {
+function buildMarkdownReport({ owner, repo, branch, commits, features }) {
   const lines = [];
   lines.push(`# Internship Work Report - ${owner}/${repo}`);
+  lines.push("");
+  lines.push(`Branch: ${branch || "N/A"}`);
   lines.push("");
   lines.push(`Period: ${formatPeriod(commits)} | Commits: ${commits.length}`);
   lines.push("");
@@ -622,6 +749,83 @@ function buildMarkdownReport({ owner, repo, commits, features }) {
   return lines.join("\n").trim();
 }
 
+function readBaseInputs() {
+  const githubToken = els.githubToken.value.trim();
+  const geminiKey = els.geminiKey.value.trim();
+  const author = els.author.value.trim();
+  const since = normalizeSinceDate(els.sinceDate.value);
+  const until = normalizeUntilDate(els.untilDate.value);
+  const repoInput = els.repoUrl.value.trim();
+
+  return {
+    githubToken,
+    geminiKey,
+    author,
+    since,
+    until,
+    repoInput,
+  };
+}
+
+async function onLoadBranches() {
+  if (appState.running) {
+    return;
+  }
+
+  const { githubToken, geminiKey, author, repoInput } = readBaseInputs();
+
+  if (!githubToken || !geminiKey || !author || !repoInput) {
+    setStatus("Fill all required fields before loading branches.", 0, "error");
+    return;
+  }
+
+  let owner;
+  let repo;
+  try {
+    ({ owner, repo } = parseRepoInput(repoInput));
+  } catch (error) {
+    setStatus(error.message, 0, "error");
+    return;
+  }
+
+  clearBranchSelectionState(false);
+  saveKeysToStorage(githubToken, geminiKey);
+  setRunningState(true);
+  setStatus("Loading repository branches...", 6);
+
+  try {
+    const branches = await fetchRepoBranches({
+      owner,
+      repo,
+      token: githubToken,
+    });
+
+    if (branches.length === 0) {
+      clearBranchSelectionState(false);
+      setStatus("No branches found in this repository.", 100, "error");
+      return;
+    }
+
+    populateBranchOptions(branches);
+    appState.repoContext = { owner, repo };
+    els.inlineNote.textContent = `Loaded ${branches.length} branches. Select one and generate.`;
+    setStatus(
+      "Branches loaded. Choose a branch and generate report.",
+      15,
+      "ok",
+    );
+  } catch (error) {
+    clearBranchSelectionState(false);
+    setStatus(
+      error.message || "Could not load branches for this repository.",
+      100,
+      "error",
+    );
+  } finally {
+    setRunningState(false);
+  }
+}
+
 async function onGenerateReport(event) {
   event.preventDefault();
   if (appState.running) {
@@ -631,14 +835,16 @@ async function onGenerateReport(event) {
   clearResults();
   els.inlineNote.textContent = "";
 
-  const githubToken = els.githubToken.value.trim();
-  const geminiKey = els.geminiKey.value.trim();
-  const author = els.author.value.trim();
-  const since = normalizeSinceDate(els.sinceDate.value);
-  const until = normalizeUntilDate(els.untilDate.value);
+  const { githubToken, geminiKey, author, since, until, repoInput } =
+    readBaseInputs();
 
-  if (!githubToken || !geminiKey || !author || !els.repoUrl.value.trim()) {
+  if (!githubToken || !geminiKey || !author || !repoInput) {
     setStatus("Please fill all required fields.", 0, "error");
+    return;
+  }
+
+  if (!appState.selectedBranch) {
+    setStatus("Load branches and select one before generating.", 0, "error");
     return;
   }
 
@@ -647,19 +853,30 @@ async function onGenerateReport(event) {
   let owner;
   let repo;
   try {
-    ({ owner, repo } = parseRepoInput(els.repoUrl.value));
+    ({ owner, repo } = parseRepoInput(repoInput));
   } catch (error) {
     setStatus(error.message, 0, "error");
     return;
   }
 
+  if (
+    !appState.repoContext ||
+    appState.repoContext.owner !== owner ||
+    appState.repoContext.repo !== repo
+  ) {
+    setStatus("Repository changed. Click Load Branches again.", 0, "error");
+    updateGenerateButtonState();
+    return;
+  }
+
   setRunningState(true);
-  setStatus("Starting pipeline...", 3);
+  setStatus(`Starting pipeline on branch ${appState.selectedBranch}...`, 3);
 
   try {
     const { commits: list, isCapped } = await collectCommits({
       owner,
       repo,
+      branch: appState.selectedBranch,
       author,
       since,
       until,
@@ -712,6 +929,7 @@ async function onGenerateReport(event) {
     const markdown = buildMarkdownReport({
       owner,
       repo,
+      branch: appState.selectedBranch,
       commits: compactCommits,
       features,
     });
@@ -719,12 +937,13 @@ async function onGenerateReport(event) {
     appState.currentReport = {
       owner,
       repo,
+      branch: appState.selectedBranch,
       commitCount: compactCommits.length,
       features,
       markdown,
     };
 
-    els.summaryLine.textContent = `Generated ${features.length} feature cards from ${compactCommits.length} commits.`;
+    els.summaryLine.textContent = `Generated ${features.length} feature cards from ${compactCommits.length} commits on branch ${appState.selectedBranch}.`;
 
     setStatus("Report complete.", 100, "ok");
   } catch (error) {

@@ -62,8 +62,17 @@
           </div>
 
           <div class="action-row">
-            <button id="generate-btn" type="submit">Generate Report</button>
+            <button id="load-branches-btn" type="button">Load Branches</button>
+            <button id="generate-btn" type="submit" disabled>Generate Report</button>
             <p id="inline-note" class="inline-note" role="note"></p>
+          </div>
+
+          <div id="branch-step" class="branch-step" hidden>
+            <label class="field" for="branch-select">
+              <span>Choose Branch (next step)</span>
+              <select id="branch-select" name="branch" required></select>
+              <small>Select a branch, then generate report from commits in that branch.</small>
+            </label>
           </div>
         </form>
       </section>

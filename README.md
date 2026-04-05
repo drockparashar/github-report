@@ -31,10 +31,19 @@ No build step and no dependencies are required.
 - GitHub username (author filter)
 - Since date (optional)
 - Until date (optional)
+- Branch (chosen in step 2 after loading branches)
+
+## Workflow
+
+1. Enter all required details.
+2. Click `Load Branches`.
+3. Select a branch.
+4. Click `Generate Report`.
 
 ## Notes
 
 - Commit list is capped at 100 (latest). Use Since Date to narrow results.
+- Commits are fetched from the selected branch using GitHub's `sha` branch filter.
 - Commit files are capped at 8 per commit.
 - Patch text is capped at 500 characters per file.
 - Commit message is capped at 300 characters.
