@@ -19,6 +19,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-x: hidden;
   font-family: "Manrope", "Segoe UI", sans-serif;
   color: var(--ink);
   background:
@@ -44,6 +45,7 @@ body {
   margin: 40px auto 64px;
   display: grid;
   gap: 20px;
+  min-width: 0;
 }
 
 .hero {
@@ -99,6 +101,7 @@ h1 {
   box-shadow: 0 12px 24px var(--shadow);
   padding: 20px;
   animation: rise-in 600ms ease both;
+  min-width: 0;
 }
 
 .form-grid {
@@ -230,8 +233,11 @@ button:disabled {
 .json-preview {
   margin: 10px 0 0;
   padding: 14px;
+  width: 100%;
+  max-width: 100%;
   max-height: 360px;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   border-radius: 12px;
   border: 1px solid rgba(181, 201, 212, 0.22);
   background: rgba(6, 18, 25, 0.9);
@@ -241,6 +247,7 @@ button:disabled {
     "Courier New",
     monospace;
   white-space: pre;
+  text-wrap: nowrap;
 }
 
 .json-preview:focus-visible {
@@ -263,6 +270,7 @@ button:disabled {
     rgba(21, 53, 73, 0.85),
     rgba(10, 26, 36, 0.9)
   );
+  min-width: 0;
 }
 
 .feature-top {
@@ -274,6 +282,7 @@ button:disabled {
 
 .feature-title {
   font-size: 20px;
+  word-break: break-word;
 }
 
 .feature-count {
@@ -285,6 +294,7 @@ button:disabled {
 .feature-impact {
   margin: 10px 0 0;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .feature-impact {
@@ -306,6 +316,8 @@ button:disabled {
   font-size: 12px;
   font-weight: 700;
   background: rgba(5, 23, 18, 0.45);
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .status-error {
@@ -328,6 +340,16 @@ button:disabled {
 
   h1 {
     font-size: 30px;
+  }
+
+  .progress-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .feature-top {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
