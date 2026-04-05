@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Internship Work Report Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="ambient-bg" aria-hidden="true"></div>
+    <main class="app-shell">
+      <header class="hero">
+        <p class="kicker">Internship tooling</p>
+        <h1>GitHub to Report in Minutes</h1>
+        <p class="hero-copy">
+          Pull your commit history, summarize work by feature with Gemini 1.5 Flash,
+          and export a polished internship report in Markdown.
+        </p>
+      </header>
+
+      <section class="panel input-panel" aria-label="Input form">
+        <form id="report-form" novalidate>
+          <div class="form-grid">
+            <label class="field" for="github-token">
+              <span>GitHub PAT</span>
+              <input id="github-token" name="githubToken" type="password" autocomplete="off" required placeholder="ghp_..." />
+              <small>Needs repo read access for private repos.</small>
+            </label>
+
+            <label class="field" for="gemini-key">
+              <span>Gemini API Key</span>
+              <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
+              <small>Used for gemini-1.5-flash analysis.</small>
+            </label>
+
+            <label class="field" for="repo-url">
+              <span>Repo URL or owner/repo</span>
+              <input id="repo-url" name="repoUrl" type="text" required placeholder="https://github.com/org/repo" />
+              <small>Example: octocat/hello-world</small>
+            </label>
+
+            <label class="field" for="author-username">
+              <span>GitHub Username</span>
+              <input id="author-username" name="author" type="text" required placeholder="your-username" />
+              <small>Filters commits authored by this user.</small>
+            </label>
+
+            <label class="field" for="since-date">
+              <span>Since Date (optional)</span>
+              <input id="since-date" name="sinceDate" type="date" />
+              <small>Use this to narrow large repos.</small>
+            </label>
+          </div>
+
+          <div class="action-row">
+            <button id="generate-btn" type="submit">Generate Report</button>
+            <p id="inline-note" class="inline-note" role="note"></p>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel progress-panel" aria-label="Progress">
+        <div class="progress-meta">
+          <p id="status-text">Ready to run.</p>
+          <p id="progress-text">0%</p>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </section>
+
+      <section class="panel output-panel" aria-label="Generated features">
+        <div class="output-header">
+          <h2>Detected Features</h2>
+          <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
+        </div>
+        <p id="summary-line" class="summary-line">No report generated yet.</p>
+        <div id="feature-list" class="feature-list"></div>
+      </section>
+    </main>
+
+    <template id="feature-card-template">
+      <article class="feature-card">
+        <div class="feature-top">
+          <h3 class="feature-title"></h3>
+          <p class="feature-count"></p>
+        </div>
+        <p class="feature-description"></p>
+        <p class="feature-impact"></p>
+        <div class="tech-tags"></div>
+      </article>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>
