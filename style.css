@@ -225,6 +225,13 @@ button:disabled {
   gap: 12px;
 }
 
+.output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .summary-line {
   margin-top: 10px;
   color: var(--ink-dim);
@@ -350,6 +357,11 @@ button:disabled {
   .feature-top {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .output-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 

@@ -11,6 +11,10 @@ const COMMIT_FETCH_DELAY_MS = 100;
 const PREVIEW_COMMIT_LIMIT = 12;
 const RETRY_MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 300;
+const STORAGE_KEYS = {
+  githubToken: "report.githubToken",
+  geminiKey: "report.geminiKey",
+};
 
 const appState = {
   running: false,
@@ -25,6 +29,7 @@ const els = {
   repoUrl: document.getElementById("repo-url"),
   author: document.getElementById("author-username"),
   sinceDate: document.getElementById("since-date"),
+  untilDate: document.getElementById("until-date"),
   inlineNote: document.getElementById("inline-note"),
   generateBtn: document.getElementById("generate-btn"),
   statusText: document.getElementById("status-text"),
@@ -33,6 +38,7 @@ const els = {
   featureList: document.getElementById("feature-list"),
   summaryLine: document.getElementById("summary-line"),
   copyMarkdownBtn: document.getElementById("copy-markdown-btn"),
+  downloadMarkdownBtn: document.getElementById("download-markdown-btn"),
   featureTemplate: document.getElementById("feature-card-template"),
   previewMeta: document.getElementById("preview-meta"),
   payloadPreview: document.getElementById("payload-preview"),
@@ -40,11 +46,15 @@ const els = {
 
 els.form.addEventListener("submit", onGenerateReport);
 els.copyMarkdownBtn.addEventListener("click", onCopyMarkdown);
+els.downloadMarkdownBtn.addEventListener("click", onDownloadMarkdown);
+
+restoreSavedKeys();
 
 function setRunningState(running) {
   appState.running = running;
   els.generateBtn.disabled = running;
   els.copyMarkdownBtn.disabled = running || !appState.currentReport;
+  els.downloadMarkdownBtn.disabled = running || !appState.currentReport;
 }
 
 function setStatus(message, percent = null, level = "info") {
@@ -123,6 +133,43 @@ function normalizeSinceDate(dateValue) {
     return undefined;
   }
   return d.toISOString();
+}
+
+function normalizeUntilDate(dateValue) {
+  if (!dateValue) {
+    return undefined;
+  }
+
+  const d = new Date(`${dateValue}T23:59:59.999Z`);
+  if (Number.isNaN(d.getTime())) {
+    return undefined;
+  }
+  return d.toISOString();
+}
+
+function restoreSavedKeys() {
+  try {
+    const githubToken = localStorage.getItem(STORAGE_KEYS.githubToken);
+    const geminiKey = localStorage.getItem(STORAGE_KEYS.geminiKey);
+
+    if (githubToken) {
+      els.githubToken.value = githubToken;
+    }
+    if (geminiKey) {
+      els.geminiKey.value = geminiKey;
+    }
+  } catch (error) {
+    console.warn("Could not restore saved keys:", error);
+  }
+}
+
+function saveKeysToStorage(githubToken, geminiKey) {
+  try {
+    localStorage.setItem(STORAGE_KEYS.githubToken, githubToken);
+    localStorage.setItem(STORAGE_KEYS.geminiKey, geminiKey);
+  } catch (error) {
+    console.warn("Could not persist keys:", error);
+  }
 }
 
 function truncateText(value, limit) {
@@ -220,6 +267,7 @@ async function fetchCommitsPage({
   repo,
   author,
   since,
+  until,
   page,
   perPage,
   token,
@@ -230,6 +278,9 @@ async function fetchCommitsPage({
   url.searchParams.set("page", String(page));
   if (since) {
     url.searchParams.set("since", since);
+  }
+  if (until) {
+    url.searchParams.set("until", until);
   }
 
   const res = await fetchWithRetry(
@@ -296,7 +347,7 @@ async function toGitHubError(response) {
   );
 }
 
-async function collectCommits({ owner, repo, author, since, token }) {
+async function collectCommits({ owner, repo, author, since, until, token }) {
   const commits = [];
   let page = 1;
   const perPage = 100;
@@ -308,6 +359,7 @@ async function collectCommits({ owner, repo, author, since, token }) {
       repo,
       author,
       since,
+      until,
       page,
       perPage,
       token,
@@ -470,6 +522,10 @@ async function analyzeInBatches(commits, apiKey) {
     return [];
   }
 
+  if (chunks.length <= 1) {
+    return collectedFeatures;
+  }
+
   setStatus("Merging duplicate features...", 92);
   try {
     const merged = await generateJsonFromGemini({
@@ -579,11 +635,14 @@ async function onGenerateReport(event) {
   const geminiKey = els.geminiKey.value.trim();
   const author = els.author.value.trim();
   const since = normalizeSinceDate(els.sinceDate.value);
+  const until = normalizeUntilDate(els.untilDate.value);
 
   if (!githubToken || !geminiKey || !author || !els.repoUrl.value.trim()) {
     setStatus("Please fill all required fields.", 0, "error");
     return;
   }
+
+  saveKeysToStorage(githubToken, geminiKey);
 
   let owner;
   let repo;
@@ -603,6 +662,7 @@ async function onGenerateReport(event) {
       repo,
       author,
       since,
+      until,
       token: githubToken,
     });
 
@@ -693,4 +753,40 @@ async function onCopyMarkdown() {
       "Clipboard permission denied. Copy manually from console output.";
     console.log(appState.currentReport.markdown);
   }
+}
+
+function slugifyFileSegment(value) {
+  return (
+    String(value)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "report"
+  );
+}
+
+function buildMarkdownFilename(report) {
+  const datePart = new Date().toISOString().slice(0, 10);
+  const owner = slugifyFileSegment(report.owner);
+  const repo = slugifyFileSegment(report.repo);
+  return `internship-report-${owner}-${repo}-${datePart}.md`;
+}
+
+function onDownloadMarkdown() {
+  if (!appState.currentReport?.markdown) {
+    return;
+  }
+
+  const markdownBlob = new Blob([appState.currentReport.markdown], {
+    type: "text/markdown;charset=utf-8",
+  });
+  const objectUrl = URL.createObjectURL(markdownBlob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = buildMarkdownFilename(appState.currentReport);
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(objectUrl);
+  els.inlineNote.textContent = "Markdown file downloaded.";
 }

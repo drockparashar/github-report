@@ -30,6 +30,7 @@ No build step and no dependencies are required.
 - Repo URL or `owner/repo`
 - GitHub username (author filter)
 - Since date (optional)
+- Until date (optional)
 
 ## Notes
 
@@ -39,8 +40,11 @@ No build step and no dependencies are required.
 - Commit message is capped at 300 characters.
 - Batching uses 6 commits per Gemini call.
 - Payload preview shows compact commit JSON before Gemini analysis.
+- Final merge call is skipped automatically when there is only one batch.
 - If a batch returns malformed JSON, that batch is skipped and processing continues.
 - Transient GitHub and Gemini failures are retried with exponential backoff.
+- Markdown report can be copied to clipboard or downloaded as a `.md` file.
+- GitHub PAT and Gemini API key are saved to localStorage and restored on reload.
 
 ## Common Errors
 

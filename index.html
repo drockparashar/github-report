@@ -53,6 +53,12 @@
               <input id="since-date" name="sinceDate" type="date" />
               <small>Use this to narrow large repos.</small>
             </label>
+
+            <label class="field" for="until-date">
+              <span>Until Date (optional)</span>
+              <input id="until-date" name="untilDate" type="date" />
+              <small>Upper date bound for commit filtering.</small>
+            </label>
           </div>
 
           <div class="action-row">
@@ -83,7 +89,10 @@
       <section class="panel output-panel" aria-label="Generated features">
         <div class="output-header">
           <h2>Detected Features</h2>
-          <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
+          <div class="output-actions">
+            <button id="download-markdown-btn" type="button" disabled>Download Markdown</button>
+            <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
+          </div>
         </div>
         <p id="summary-line" class="summary-line">No report generated yet.</p>
         <div id="feature-list" class="feature-list"></div>
