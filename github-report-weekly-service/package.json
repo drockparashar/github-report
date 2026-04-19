@@ -1,0 +1,15 @@
+{
+  "name": "github-report-weekly-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Weekly organization updates from multiple GitHub repositories via Lambda-style handlers",
+  "scripts": {
+    "run:local": "node ./src/handlers/api-generate.js",
+    "run:cron": "node ./src/handlers/cron-weekly.js",
+    "status": "node ./src/handlers/get-status.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

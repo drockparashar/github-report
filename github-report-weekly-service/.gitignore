@@ -1,0 +1,7 @@
+# Local artifacts and state
+artifacts/
+.local-jobs/
+
+# Generated weekly reports
+weekly-report-*.md
+weekly-report-*.json
