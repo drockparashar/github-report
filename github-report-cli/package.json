@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Terminal internship report generator from GitHub commits using Gemini",
+  "description": "Terminal weekly engineering update generator from GitHub commits using Gemini",
   "bin": {
     "github-report": "./bin/report.js"
   },

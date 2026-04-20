@@ -1,66 +1,95 @@
-# Internship Work Report Generator
+# GitHub Work Reporting Suite
 
-A single-page web app that:
+This repository now contains three implementations of the reporting workflow:
 
-1. Fetches your commits from GitHub.
-2. Pulls commit-level diff patches.
-3. Shows a compact payload preview before AI analysis.
-4. Sends compact commit summaries to Gemini 2.5 Flash in batches.
-5. Merges and deduplicates extracted features.
-6. Renders feature cards and exports a Markdown internship report.
+1. Browser app for single-repo interactive reporting
+2. Terminal CLI for branch-scoped report generation
+3. Weekly multi-repo service (Lambda-oriented structure)
 
-## Stack
+## Project Structure
 
-- HTML
-- CSS
-- Vanilla JavaScript
-- GitHub REST API
-- Gemini 2.5 Flash API
+- `index.html`, `app.js`, `style.css`
+  - Original browser-based report generator
+- `github-report-cli/`
+  - Node.js CLI for interactive or non-interactive report generation
+- `github-report-weekly-service/`
+  - Weekly multi-repo update service designed for Lambda + API Gateway + cron integration
 
-## Run
+## Current Stage
 
-Open `index.html` in a browser or run via VS Code Live Server.
+### 1) Web App (stable)
 
-No build step and no dependencies are required.
+The browser app supports:
 
-## Inputs
+- repo + branch selection
+- optional since/until filters
+- compact payload preview
+- Gemini batch analysis with merge deduplication
+- markdown copy + download
 
-- GitHub PAT
-- Gemini API key
-- Repo URL or `owner/repo`
-- GitHub username (author filter)
-- Since date (optional)
-- Until date (optional)
-- Branch (chosen in step 2 after loading branches)
+Run:
 
-## Workflow
+1. Open `index.html` in browser or VS Code Live Server.
+2. Fill inputs, load branches, select branch, generate report.
 
-1. Enter all required details.
-2. Click `Load Branches`.
-3. Select a branch.
-4. Click `Generate Report`.
+### 2) CLI App (stable)
 
-## Notes
+The CLI supports:
 
-- Commit list is capped at 100 (latest). Use Since Date to narrow results.
-- Commits are fetched from the selected branch using GitHub's `sha` branch filter.
-- Commit files are capped at 8 per commit.
-- Patch text is capped at 500 characters per file.
-- Commit message is capped at 300 characters.
-- Batching uses 6 commits per Gemini call.
-- Payload preview shows compact commit JSON before Gemini analysis.
-- Final merge call is skipped automatically when there is only one batch.
-- If a batch returns malformed JSON, that batch is skipped and processing continues.
-- Transient GitHub and Gemini failures are retried with exponential backoff.
-- Markdown report can be copied to clipboard or downloaded as a `.md` file.
-- GitHub PAT and Gemini API key are saved to localStorage and restored on reload.
+- branch selection (interactive or via flag)
+- markdown output + optional JSON output
+- retry/backoff and malformed batch handling
 
-## Common Errors
+Run:
 
-- `401`: invalid GitHub token
-- `404`: repo not found or no access
-- `403/429`: rate limit reached
+```bash
+cd github-report-cli
+node ./bin/report.js generate
+```
 
-## Security Reminder
+For details, see `github-report-cli/README.md`.
 
-This is currently browser-only. API keys are entered in the UI and used directly from the client. For public deployment, move API calls to a backend proxy.
+### 3) Weekly Service (in progress)
+
+The weekly service currently includes:
+
+- multi-repo scan by weekly date range (no author filter)
+- per-repo independent report generation
+- Lambda-style handlers:
+  - `api-generate`
+  - `cron-weekly`
+  - `get-status`
+- local development job store and artifact output
+
+Run locally:
+
+```bash
+cd github-report-weekly-service
+node ./src/handlers/api-generate.js
+```
+
+For details, see `github-report-weekly-service/README.md`.
+
+## Shared Pipeline Rules
+
+Across implementations, the core report logic keeps these limits:
+
+- max commits: 100 per repo scan
+- max files: 8 per commit
+- max patch chars: 500 per file
+- max message chars: 300
+- Gemini batch size: 6 commits
+
+Reliability behavior:
+
+- transient GitHub/Gemini retry with exponential backoff
+- malformed batch JSON is skipped (processing continues)
+- final merge call is skipped if only one batch exists
+
+## Next Planned Stage
+
+For `github-report-weekly-service`:
+
+1. Replace local job store with DynamoDB
+2. Replace local report artifacts with S3
+3. Add deployment IaC for Lambda, API Gateway, EventBridge, and IAM

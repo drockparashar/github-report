@@ -26,7 +26,7 @@ export function buildMarkdownReport({
   features,
 }) {
   const lines = [];
-  lines.push(`# Internship Work Report - ${owner}/${repo}`);
+  lines.push(`# Weekly Engineering Update - ${owner}/${repo}`);
   lines.push("");
   lines.push(`Branch: ${branch || "N/A"}`);
   lines.push("");
@@ -34,7 +34,7 @@ export function buildMarkdownReport({
   lines.push("");
 
   features.forEach((feature, index) => {
-    lines.push(`## ${index + 1}. ${feature.name || "Untitled feature"}`);
+    lines.push(`## ${index + 1}. ${feature.name || "Untitled workstream"}`);
     lines.push(feature.description || "No description provided.");
     lines.push(`**Impact:** ${feature.impact || "Not specified."}`);
 
@@ -55,7 +55,7 @@ export function buildDefaultMarkdownFilename({ owner, repo, branch }) {
   const ownerSlug = slugifyFileSegment(owner);
   const repoSlug = slugifyFileSegment(repo);
   const branchSlug = slugifyFileSegment(branch || "branch");
-  return `internship-report-${ownerSlug}-${repoSlug}-${branchSlug}-${datePart}.md`;
+  return `weekly-update-${ownerSlug}-${repoSlug}-${branchSlug}-${datePart}.md`;
 }
 
 export function summarizeFeatures(features) {

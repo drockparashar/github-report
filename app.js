@@ -99,7 +99,7 @@ function setStatus(message, percent = null, level = "info") {
 
 function clearResults() {
   els.featureList.innerHTML = "";
-  els.summaryLine.textContent = "No report generated yet.";
+  els.summaryLine.textContent = "No weekly update generated yet.";
   els.previewMeta.textContent = "Preview appears after commit extraction.";
   els.payloadPreview.textContent = "[]";
   appState.currentReport = null;
@@ -558,11 +558,11 @@ function renderPayloadPreview(compactCommits) {
 }
 
 function buildBatchPrompt(batchCommits) {
-  return `You are analyzing Git commits from a software engineering internship.\nYour job is to identify distinct features or work items the developer built.\n\nCommits:\n${JSON.stringify(batchCommits, null, 2)}\n\nGroup related commits into features. Be technical and specific.\n\nReturn JSON only, in this exact structure:\n{\n  "features": [\n    {\n      "name": "Short feature name (3-6 words)",\n      "description": "2-3 sentences - what was built, how it works, why it matters",\n      "commits": ["abc1234", "def5678"],\n      "technologies": ["React", "PostgreSQL"],\n      "impact": "One sentence on business or technical impact"\n    }\n  ]\n}`;
+  return `You are analyzing Git commits for a weekly engineering team update.\nYour job is to identify distinct workstreams or updates the team delivered.\n\nCommits:\n${JSON.stringify(batchCommits, null, 2)}\n\nGroup related commits into weekly workstreams. Be technical and specific.\n\nReturn JSON only, in this exact structure:\n{\n  "features": [\n    {\n      "name": "Short workstream name (3-6 words)",\n      "description": "2-3 sentences - what changed, how it works, and why it matters",\n      "commits": ["abc1234", "def5678"],\n      "technologies": ["React", "PostgreSQL"],\n      "impact": "One sentence on business or technical impact"\n    }\n  ]\n}`;
 }
 
 function buildMergePrompt(allFeatures) {
-  return `Below is a list of features extracted from multiple batches of Git commits.\nSome may be duplicates or closely related.\n\nMerge duplicates, combine related ones, and return a clean final list.\nKeep the most descriptive version of each. Do not invent new information.\n\nFeatures:\n${JSON.stringify({ features: allFeatures }, null, 2)}\n\nReturn JSON only:\n{ "features": [...] }`;
+  return `Below is a list of weekly workstreams extracted from multiple batches of Git commits.\nSome may be duplicates or closely related.\n\nMerge duplicates, combine related workstreams, and return a clean final list.\nKeep the most descriptive version of each. Do not invent new information.\n\nFeatures:\n${JSON.stringify({ features: allFeatures }, null, 2)}\n\nReturn JSON only:\n{ "features": [...] }`;
 }
 
 async function generateJsonFromGemini({ apiKey, prompt }) {
@@ -725,7 +725,7 @@ function formatPeriod(commits) {
 
 function buildMarkdownReport({ owner, repo, branch, commits, features }) {
   const lines = [];
-  lines.push(`# Internship Work Report - ${owner}/${repo}`);
+  lines.push(`# Weekly Engineering Update - ${owner}/${repo}`);
   lines.push("");
   lines.push(`Branch: ${branch || "N/A"}`);
   lines.push("");
@@ -733,7 +733,7 @@ function buildMarkdownReport({ owner, repo, branch, commits, features }) {
   lines.push("");
 
   features.forEach((feature, index) => {
-    lines.push(`## ${index + 1}. ${feature.name || "Untitled feature"}`);
+    lines.push(`## ${index + 1}. ${feature.name || "Untitled workstream"}`);
     lines.push(feature.description || "No description provided.");
     lines.push(`**Impact:** ${feature.impact || "Not specified."}`);
 
@@ -886,7 +886,7 @@ async function onGenerateReport(event) {
     if (list.length === 0) {
       setStatus("No commits found for this user/filter.", 100, "ok");
       els.summaryLine.textContent =
-        "No matching commits found. Try widening the date range.";
+        "No matching commits found. Try widening the reporting window.";
       return;
     }
 
@@ -918,9 +918,9 @@ async function onGenerateReport(event) {
     const features = await analyzeInBatches(compactCommits, geminiKey);
 
     if (features.length === 0) {
-      setStatus("No features extracted from analysis.", 100, "error");
+      setStatus("No workstreams extracted from analysis.", 100, "error");
       els.summaryLine.textContent =
-        "Gemini did not return usable features. Try a narrower date range.";
+        "Gemini did not return usable weekly workstreams. Try a narrower reporting window.";
       return;
     }
 
@@ -943,7 +943,7 @@ async function onGenerateReport(event) {
       markdown,
     };
 
-    els.summaryLine.textContent = `Generated ${features.length} feature cards from ${compactCommits.length} commits on branch ${appState.selectedBranch}.`;
+    els.summaryLine.textContent = `Generated ${features.length} weekly workstreams from ${compactCommits.length} commits on branch ${appState.selectedBranch}.`;
 
     setStatus("Report complete.", 100, "ok");
   } catch (error) {
@@ -988,7 +988,7 @@ function buildMarkdownFilename(report) {
   const datePart = new Date().toISOString().slice(0, 10);
   const owner = slugifyFileSegment(report.owner);
   const repo = slugifyFileSegment(report.repo);
-  return `internship-report-${owner}-${repo}-${datePart}.md`;
+  return `weekly-update-${owner}-${repo}-${datePart}.md`;
 }
 
 function onDownloadMarkdown() {

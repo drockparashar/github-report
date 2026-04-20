@@ -22,11 +22,11 @@ const PREVIEW_LIMIT = 5;
 
 function printFeatureSummary(features) {
   if (features.length === 0) {
-    console.log("\nNo features were extracted by Gemini.");
+    console.log("\nNo weekly workstreams were extracted by Gemini.");
     return;
   }
 
-  console.log("\nFeature summary:");
+  console.log("\nWeekly workstream summary:");
   const summary = summarizeFeatures(features);
   summary.forEach((item) => {
     console.log(`  ${item.index}. ${item.name}`);
@@ -162,7 +162,7 @@ export async function runCli(argv) {
   logSummary("Repository", `${owner}/${repo}`);
   logSummary("Branch", selectedBranch);
   logSummary("Commits analyzed", String(result.compactCommits.length));
-  logSummary("Features extracted", String(result.features.length));
+  logSummary("Workstreams extracted", String(result.features.length));
   logSummary("Markdown", markdownPath);
   if (jsonPath) {
     logSummary("JSON", jsonPath);

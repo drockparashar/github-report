@@ -1,6 +1,6 @@
-# GitHub Report CLI
+# GitHub Weekly Update CLI
 
-Terminal version of the internship report generator.
+Terminal version of the weekly engineering update generator.
 
 ## What it does
 
@@ -40,8 +40,8 @@ node ./bin/report.js generate \
   --branch main \
   --since 2024-01-01 \
   --until 2024-04-30 \
-  --output internship-report.md \
-  --json-output internship-report.json \
+  --output weekly-update.md \
+  --json-output weekly-update.json \
   --non-interactive
 ```
 
