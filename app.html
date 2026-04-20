@@ -1,0 +1,318 @@
+<main class="dashboard-shell">
+  <header class="page-header">
+    <h1>Generator Dashboard</h1>
+    <p>Configure parameters, extract workstreams, and get results.</p>
+  </header>
+
+  <div class="dashboard-grid">
+    <!-- LEFT: Sidebar Form -->
+    <aside class="dashboard-sidebar">
+      <form id="report-form" class="bento-card form-panel" novalidate>
+        <div class="bento-header">Configuration</div>
+        <div class="form-grid">
+          <label class="field" for="github-token">
+            <span>GitHub PAT</span>
+            <input id="github-token" name="githubToken" type="password" autocomplete="off" required placeholder="ghp_..." />
+            <small>Read access for private repos.</small>
+          </label>
+
+          <label class="field" for="gemini-key">
+            <span>Gemini API Key</span>
+            <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
+            <small>gemini-2.5-flash analysis.</small>
+          </label>
+
+          <label class="field" for="repo-url">
+            <span>Repository</span>
+            <input id="repo-url" name="repoUrl" type="text" required placeholder="owner/repo" />
+          </label>
+
+          <label class="field" for="author-username">
+            <span>GitHub Username</span>
+            <input id="author-username" name="author" type="text" required placeholder="your-username" />
+          </label>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <label class="field" for="since-date">
+              <span>Since Date</span>
+              <input id="since-date" name="sinceDate" type="date" />
+            </label>
+
+            <label class="field" for="until-date">
+              <span>Until Date</span>
+              <input id="until-date" name="untilDate" type="date" />
+            </label>
+          </div>
+        </div>
+
+        <div id="branch-step" class="branch-step field" style="margin-top: 1.5rem;" hidden>
+          <span>Choose Branch</span>
+          <select id="branch-select" name="branch" required></select>
+        </div>
+
+        <div class="action-row">
+          <button id="load-branches-btn" type="button">Load Branches</button>
+          <button id="generate-btn" type="submit" class="primary" disabled>Generate Report</button>
+          <p id="inline-note" class="inline-note" role="note"></p>
+        </div>
+      </form>
+    </aside>
+
+    <!-- RIGHT: Results -->
+    <section class="dashboard-content">
+      <div class="bento-card progress-panel" aria-label="Progress">
+        <div class="bento-header">Pipeline Status</div>
+        <div class="progress-meta">
+          <span id="status-text">Ready to run.</span>
+          <span id="progress-text">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="bento-card preview-panel" aria-label="Payload preview" style="display: none;" id="preview-container">
+        <div class="bento-header">Payload Preview</div>
+        <p id="preview-meta" class="summary-line">Preview appears after extraction.</p>
+        <pre id="payload-preview" class="json-preview" tabindex="0">[]</pre>
+      </div>
+
+      <div class="bento-card output-panel" aria-label="Generated features">
+        <div class="bento-header">Weekly Workstreams</div>
+        <p id="summary-line" class="summary-line">No report generated yet.</p>
+        <div class="output-actions">
+          <button id="download-markdown-btn" type="button" disabled>Download Markdown</button>
+          <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
+        </div>
+        <div id="feature-list" class="feature-list"></div>
+      </div>
+    </section>
+  </div>
+</main>lass="dashboard-shell">
+  <header class="page-header">
+    <h1>Generator Dashboard</h1>
+    <p>Configure parameters, extract workstreams, and get results.</p>
+  </header>
+
+  <div class="dashboard-grid">
+    <!-- LEFT: Sidebar Form -->
+    <aside class="dashboard-sidebar">
+      <form id="report-form" class="bento-card form-panel" novalidate>
+        <div class="bento-header">Configuration</div>
+        <div class="form-grid">
+          <label class="field" for="github-token">
+            <span>GitHub PAT</span>
+            <input id="github-token" name="githubToken" type="password" autocomplete="off" required placeholder="ghp_..." />
+            <small>Read access for private repos.</small>
+          </label>
+
+          <label class="field" for="gemini-key">
+            <span>Gemini API Key</span>
+            <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
+            <small>gemini-2.5-flash analysis.</small>
+          </label>
+
+          <label class="field" for="repo-url">
+            <span>Repository</span>
+            <input id="repo-url" name="repoUrl" type="text" required placeholder="owner/repo" />
+          </label>
+
+          <label class="field" for="author-username">
+            <span>GitHub Username</span>
+            <input id="author-username" name="author" type="text" required placeholder="your-username" />
+          </label>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <label class="field" for="since-date">
+              <span>Since Date</span>
+              <input id="since-date" name="sinceDate" type="date" />
+            </label>
+
+            <label class="field" for="until-date">
+              <span>Until Date</span>
+              <input id="until-date" name="untilDate" type="date" />
+            </label>
+          </div>
+        </div>
+
+        <div id="branch-step" class="branch-step field" style="margin-top: 1.5rem;" hidden>
+          <span>Choose Branch</span>
+          <select id="branch-select" name="branch" required></select>
+        </div>
+
+        <div class="action-row">
+          <button id="load-branches-btn" type="button">Load Branches</button>
+          <button id="generate-btn" type="submit" class="primary" disabled>Generate Report</button>
+          <p id="inline-note" class="inline-note" role="note"></p>
+        </div>
+      </form>
+    </aside>
+
+    <!-- RIGHT: Results -->
+    <section class="dashboard-content">
+      <div class="bento-card progress-panel" aria-label="Progress">
+        <div class="bento-header">Pipeline Status</div>
+        <div class="progress-meta">
+          <span id="status-text">Ready to run.</span>
+          <span id="progress-text">0%</span>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
+
+      <div class="bento-card preview-panel" aria-label="Payload preview" style="display: none;" id="preview-container">
+        <div class="bento-header">Payload Preview</div>
+        <p id="preview-meta" class="summary-line">Preview appears after extraction.</p>
+        <pre id="payload-preview" class="json-preview" tabindex="0">[]</pre>
+      </div>
+
+      <div class="bento-card output-panel" aria-label="Generated features">
+        <div class="bento-header">Weekly Workstreams</div>
+        <p id="summary-line" class="summary-line">No report generated yet.</p>
+        <div class="output-actions">
+          <button id="download-markdown-btn" type="button" disabled>Download Markdown</button>
+          <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
+        </div>
+        <div id="feature-list" class="feature-list"></div>
+      </div>
+    </section>
+  </div>
+</main>pe html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Report Generator | Weekly Engineering Update</title>
+    <link rel="stylesheet" href="globals.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header class="nav-header">
+      <div class="logo">WeeklyUpdate<span>.</span></div>
+      <nav>
+        <a href="index.html" class="back-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          <span>Back to Home</span>
+        </a>
+      </nav>
+    </header>
+
+    <main class="app-shell">
+      <header class="hero">
+        <p class="kicker">Team reporting</p>
+        <h1>GitHub to Weekly Update in Minutes</h1>
+        <p class="hero-copy">
+          Pull repository commits, summarize weekly workstreams with Gemini 2.5 Flash,
+          and export a polished engineering update in Markdown.
+        </p>
+      </header>
+
+      <section class="panel input-panel" aria-label="Input form">
+        <form id="report-form" novalidate>
+          <div class="form-grid">
+            <label class="field" for="github-token">
+              <span>GitHub PAT</span>
+              <input id="github-token" name="githubToken" type="password" autocomplete="off" required placeholder="ghp_..." />
+              <small>Needs repo read access for private repos.</small>
+            </label>
+
+            <label class="field" for="gemini-key">
+              <span>Gemini API Key</span>
+              <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
+              <small>Used for gemini-2.5-flash analysis.</small>
+            </label>
+
+            <label class="field" for="repo-url">
+              <span>Repo URL or owner/repo</span>
+              <input id="repo-url" name="repoUrl" type="text" required placeholder="https://github.com/org/repo" />
+              <small>Example: octocat/hello-world</small>
+            </label>
+
+            <label class="field" for="author-username">
+              <span>GitHub Username</span>
+              <input id="author-username" name="author" type="text" required placeholder="your-username" />
+              <small>Filters commits authored by this user.</small>
+            </label>
+
+            <label class="field" for="since-date">
+              <span>Since Date (optional)</span>
+              <input id="since-date" name="sinceDate" type="date" />
+              <small>Use this to narrow large repos.</small>
+            </label>
+
+            <label class="field" for="until-date">
+              <span>Until Date (optional)</span>
+              <input id="until-date" name="untilDate" type="date" />
+              <small>Upper date bound for commit filtering.</small>
+            </label>
+          </div>
+
+          <div class="action-row">
+            <button id="load-branches-btn" type="button">Load Branches</button>
+            <button id="generate-btn" type="submit" disabled>Generate Report</button>
+            <p id="inline-note" class="inline-note" role="note"></p>
+          </div>
+
+          <div id="branch-step" class="branch-step" hidden>
+            <label class="field" for="branch-select">
+              <span>Choose Branch (next step)</span>
+              <select id="branch-select" name="branch" required></select>
+              <small>Select a branch, then generate report from commits in that branch.</small>
+            </label>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel progress-panel" aria-label="Progress">
+        <div class="progress-meta">
+          <p id="status-text">Ready to run.</p>
+          <p id="progress-text">0%</p>
+        </div>
+        <div class="progress-track" aria-hidden="true">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+      </section>
+
+      <section class="panel preview-panel" aria-label="Payload preview">
+        <div class="output-header">
+          <h2>Compact Payload Preview</h2>
+        </div>
+        <p id="preview-meta" class="summary-line">Preview appears after commit extraction.</p>
+        <pre id="payload-preview" class="json-preview" tabindex="0">[]</pre>
+      </section>
+
+      <section class="panel output-panel" aria-label="Generated features">
+        <div class="output-header">
+          <h2>Weekly Workstreams</h2>
+          <div class="output-actions">
+            <button id="download-markdown-btn" type="button" disabled>Download Markdown</button>
+            <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
+          </div>
+        </div>
+        <p id="summary-line" class="summary-line">No report generated yet.</p>
+        <div id="feature-list" class="feature-list"></div>
+      </section>
+    </main>
+
+    <footer class="minimal-footer">
+      <p>© 2026 WeeklyUpdate Generator. Minimalist design system.</p>
+    </footer>
+
+    <template id="feature-card-template">
+      <article class="feature-card">
+        <div class="feature-top">
+          <h3 class="feature-title"></h3>
+          <p class="feature-count"></p>
+        </div>
+        <p class="feature-description"></p>
+        <p class="feature-impact"></p>
+        <div class="tech-tags"></div>
+      </article>
+    </template>
+
+    <script src="app.js" defer></script>
+  </body>
+</html>

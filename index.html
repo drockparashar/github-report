@@ -4,122 +4,90 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Weekly Engineering Update Generator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&family=Sora:wght@500;600;700&display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="style.css" />
+    <meta name="description" content="Stop writing updates. Let commits do the talking. Turn GitHub commit history into AI-generated weekly workstreams." />
+    <link rel="stylesheet" href="globals.css" />
+    <link rel="stylesheet" href="landing.css" />
   </head>
   <body>
-    <div class="ambient-bg" aria-hidden="true"></div>
-    <main class="app-shell">
-      <header class="hero">
-        <p class="kicker">Team reporting</p>
-        <h1>GitHub to Weekly Update in Minutes</h1>
-        <p class="hero-copy">
-          Pull repository commits, summarize weekly workstreams with Gemini 2.5 Flash,
-          and export a polished engineering update in Markdown.
-        </p>
-      </header>
+    <header class="nav-header">
+      <div class="logo">WeeklyUpdate<span>.</span></div>
+      <nav>
+        <a href="https://github.com/your-org/github-report-cli" target="_blank" rel="noopener">CLI</a>
+        <a href="#features">Features</a>
+        <a href="app.html" class="button cta-small">Open Generator</a>
+      </nav>
+    </header>
 
-      <section class="panel input-panel" aria-label="Input form">
-        <form id="report-form" novalidate>
-          <div class="form-grid">
-            <label class="field" for="github-token">
-              <span>GitHub PAT</span>
-              <input id="github-token" name="githubToken" type="password" autocomplete="off" required placeholder="ghp_..." />
-              <small>Needs repo read access for private repos.</small>
-            </label>
-
-            <label class="field" for="gemini-key">
-              <span>Gemini API Key</span>
-              <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
-              <small>Used for gemini-2.5-flash analysis.</small>
-            </label>
-
-            <label class="field" for="repo-url">
-              <span>Repo URL or owner/repo</span>
-              <input id="repo-url" name="repoUrl" type="text" required placeholder="https://github.com/org/repo" />
-              <small>Example: octocat/hello-world</small>
-            </label>
-
-            <label class="field" for="author-username">
-              <span>GitHub Username</span>
-              <input id="author-username" name="author" type="text" required placeholder="your-username" />
-              <small>Filters commits authored by this user.</small>
-            </label>
-
-            <label class="field" for="since-date">
-              <span>Since Date (optional)</span>
-              <input id="since-date" name="sinceDate" type="date" />
-              <small>Use this to narrow large repos.</small>
-            </label>
-
-            <label class="field" for="until-date">
-              <span>Until Date (optional)</span>
-              <input id="until-date" name="untilDate" type="date" />
-              <small>Upper date bound for commit filtering.</small>
-            </label>
+    <main>
+      <section class="hero">
+        <div class="hero-content">
+          <h1>Stop writing updates.<br>Let commits do the talking.</h1>
+          <p class="subtitle">Turn your GitHub commit history into concise, stakeholder-ready weekly workstream reports using Gemini 2.5 Flash across Web, CLI, and AWS workflows.</p>
+          <div class="hero-actions">
+            <a href="app.html" class="button cta-primary">Start Generating Now</a>
           </div>
-
-          <div class="action-row">
-            <button id="load-branches-btn" type="button">Load Branches</button>
-            <button id="generate-btn" type="submit" disabled>Generate Report</button>
-            <p id="inline-note" class="inline-note" role="note"></p>
-          </div>
-
-          <div id="branch-step" class="branch-step" hidden>
-            <label class="field" for="branch-select">
-              <span>Choose Branch (next step)</span>
-              <select id="branch-select" name="branch" required></select>
-              <small>Select a branch, then generate report from commits in that branch.</small>
-            </label>
-          </div>
-        </form>
-      </section>
-
-      <section class="panel progress-panel" aria-label="Progress">
-        <div class="progress-meta">
-          <p id="status-text">Ready to run.</p>
-          <p id="progress-text">0%</p>
         </div>
-        <div class="progress-track" aria-hidden="true">
-          <div id="progress-fill" class="progress-fill"></div>
+
+        <div class="visual-concept">
+          <div class="commit-stream" aria-hidden="true">
+            <div class="commit-node">fix: cache invalidation boundary</div>
+            <div class="commit-node">feat: add dynamo db adapters</div>
+            <div class="commit-node">chore: dependency bumps</div>
+          </div>
+          <div class="arrow-connector">→ <span>Gemini 2.5 Flash</span> →</div>
+          <div class="markdown-result" aria-hidden="true">
+            <div class="md-line title">## Core Infrastructure</div>
+            <div class="md-line body">Completed integration of DynamoDB caching adapters, improving query boundaries by 40%.</div>
+          </div>
         </div>
       </section>
 
-      <section class="panel preview-panel" aria-label="Payload preview">
-        <div class="output-header">
-          <h2>Compact Payload Preview</h2>
+      <section id="features" class="grid-section">
+        <div class="section-header">
+          <h2>Three ways to report.</h2>
         </div>
-        <p id="preview-meta" class="summary-line">Preview appears after commit extraction.</p>
-        <pre id="payload-preview" class="json-preview" tabindex="0">[]</pre>
+        <div class="bento-grid">
+          <article class="bento-card">
+            <div class="bento-icon">01</div>
+            <h3>Web Interface</h3>
+            <p>A zero-install browser tool. Paste your GitHub PAT and Gemini API key, select a repository branch, and instantly extract weeks of context.</p>
+          </article>
+          <article class="bento-card">
+            <div class="bento-icon">02</div>
+            <h3>CLI Application</h3>
+            <p>Run <code>report --repo octocat/hello --since 7d</code> straight from your terminal. Easily integrates into customized local bash workflows.</p>
+          </article>
+          <article class="bento-card">
+            <div class="bento-icon">03</div>
+            <h3>AWS Serverless Cron</h3>
+            <p>Orchestrate organizational updates across 50+ repositories every Friday at 5 PM using EventBridge, Lambda, DynamoDB, and S3.</p>
+          </article>
+        </div>
       </section>
 
-      <section class="panel output-panel" aria-label="Generated features">
-        <div class="output-header">
-          <h2>Weekly Workstreams</h2>
-          <div class="output-actions">
-            <button id="download-markdown-btn" type="button" disabled>Download Markdown</button>
-            <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
-          </div>
-        </div>
-        <p id="summary-line" class="summary-line">No report generated yet.</p>
-        <div id="feature-list" class="feature-list"></div>
+      <section class="cta-section">
+        <h2>Ready for Friday?</h2>
+        <a href="app.html" class="button cta-primary">Launch Web Generator</a>
       </section>
     </main>
 
-    <template id="feature-card-template">
-      <article class="feature-card">
-        <div class="feature-top">
-          <h3 class="feature-title"></h3>
-          <p class="feature-count"></p>
-        </div>
-        <p class="feature-description"></p>
-        <p class="feature-impact"></p>
-        <div class="tech-tags"></div>
-      </article>
-    </template>
+    <footer class="minimal-footer">
+      <p>© 2026 WeeklyUpdate Generator. Minimalist design system.</p>
+    </footer>
 
-    <script src="app.js" defer></script>
+    <script>
+      // Subtle scroll reveal animations
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+          }
+        });
+      }, { threshold: 0.1 });
+      
+      document.querySelectorAll('.bento-card, .section-header, .visual-concept').forEach(el => {
+        observer.observe(el);
+      });
+    </script>
   </body>
-</html>
+</html><!doctype html>
