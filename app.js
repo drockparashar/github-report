@@ -1,7 +1,32 @@
 const GITHUB_API_BASE = "https://api.github.com";
-const GEMINI_MODEL = "gemini-2.5-flash";
+const DEFAULT_AI_PROVIDER = "gemini";
+const AI_PROVIDERS = {
+  gemini: {
+    label: "Gemini",
+    defaultModel: "gemini-2.5-flash",
+    keyPlaceholder: "AIza...",
+    keyHelp: "Use a Gemini API key from Google AI Studio.",
+    modelHelp: "Google Generative Language model for JSON analysis.",
+  },
+  anthropic: {
+    label: "Anthropic",
+    defaultModel: "claude-3-5-sonnet-latest",
+    keyPlaceholder: "sk-ant-...",
+    keyHelp: "Use an Anthropic API key for the Messages API.",
+    modelHelp: "Anthropic Messages API model for JSON analysis.",
+  },
+  openai: {
+    label: "OpenAI",
+    defaultModel: "gpt-4o-mini",
+    keyPlaceholder: "sk-...",
+    keyHelp: "Use an OpenAI API key for chat completions.",
+    modelHelp: "OpenAI chat model for JSON analysis.",
+  },
+};
 const GEMINI_API_BASE =
   "https://generativelanguage.googleapis.com/v1beta/models";
+const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const MAX_COMMITS = 100;
 const COMMIT_FILES_LIMIT = 8;
 const PATCH_LIMIT = 500;
@@ -14,7 +39,10 @@ const RETRY_BASE_DELAY_MS = 300;
 const MAX_BRANCHES = 200;
 const STORAGE_KEYS = {
   githubToken: "report.githubToken",
-  geminiKey: "report.geminiKey",
+  aiProvider: "report.aiProvider",
+  aiKey: "report.aiKey",
+  aiModel: "report.aiModel",
+  legacyGeminiKey: "report.geminiKey",
 };
 
 const appState = {
@@ -29,7 +57,12 @@ const appState = {
 const els = {
   form: document.getElementById("report-form"),
   githubToken: document.getElementById("github-token"),
-  geminiKey: document.getElementById("gemini-key"),
+  aiProvider: document.getElementById("ai-provider"),
+  aiKey: document.getElementById("ai-key"),
+  aiModel: document.getElementById("ai-model"),
+  aiProviderHelp: document.getElementById("ai-provider-help"),
+  aiKeyHelp: document.getElementById("ai-key-help"),
+  aiModelHelp: document.getElementById("ai-model-help"),
   repoUrl: document.getElementById("repo-url"),
   author: document.getElementById("author-username"),
   sinceDate: document.getElementById("since-date"),
@@ -56,12 +89,46 @@ els.loadBranchesBtn.addEventListener("click", onLoadBranches);
 els.branchSelect.addEventListener("change", onBranchSelectionChange);
 els.copyMarkdownBtn.addEventListener("click", onCopyMarkdown);
 els.downloadMarkdownBtn.addEventListener("click", onDownloadMarkdown);
+els.aiProvider.addEventListener("change", onAiProviderChange);
 
 [els.repoUrl, els.githubToken].forEach((inputEl) => {
   inputEl.addEventListener("input", () => clearBranchSelectionState(false));
 });
 
 restoreSavedKeys();
+updateAiProviderUi();
+
+function getProviderConfig(provider) {
+  return AI_PROVIDERS[provider] || AI_PROVIDERS[DEFAULT_AI_PROVIDER];
+}
+
+function getProviderLabel(provider) {
+  return getProviderConfig(provider).label;
+}
+
+function updateAiProviderUi({ resetModel = false } = {}) {
+  const provider = AI_PROVIDERS[els.aiProvider.value]
+    ? els.aiProvider.value
+    : DEFAULT_AI_PROVIDER;
+  const config = getProviderConfig(provider);
+
+  if (els.aiProvider.value !== provider) {
+    els.aiProvider.value = provider;
+  }
+
+  els.aiKey.placeholder = config.keyPlaceholder;
+  els.aiKeyHelp.textContent = config.keyHelp;
+  els.aiModelHelp.textContent = config.modelHelp;
+  els.aiProviderHelp.textContent = `${config.label} will analyze commit batches and shape them into a stakeholder-ready brief.`;
+
+  if (resetModel || !els.aiModel.value.trim()) {
+    els.aiModel.value = config.defaultModel;
+  }
+}
+
+function onAiProviderChange() {
+  updateAiProviderUi({ resetModel: true });
+}
 
 function setRunningState(running) {
   appState.running = running;
@@ -99,7 +166,7 @@ function setStatus(message, percent = null, level = "info") {
 
 function clearResults() {
   els.featureList.innerHTML = "";
-  els.summaryLine.textContent = "No weekly update generated yet.";
+  els.summaryLine.textContent = "No commit intelligence brief generated yet.";
   els.previewMeta.textContent = "Preview appears after commit extraction.";
   els.payloadPreview.textContent = "[]";
   appState.currentReport = null;
@@ -209,23 +276,35 @@ function normalizeUntilDate(dateValue) {
 function restoreSavedKeys() {
   try {
     const githubToken = localStorage.getItem(STORAGE_KEYS.githubToken);
-    const geminiKey = localStorage.getItem(STORAGE_KEYS.geminiKey);
+    const aiProvider = localStorage.getItem(STORAGE_KEYS.aiProvider);
+    const aiKey =
+      localStorage.getItem(STORAGE_KEYS.aiKey) ||
+      localStorage.getItem(STORAGE_KEYS.legacyGeminiKey);
+    const aiModel = localStorage.getItem(STORAGE_KEYS.aiModel);
 
     if (githubToken) {
       els.githubToken.value = githubToken;
     }
-    if (geminiKey) {
-      els.geminiKey.value = geminiKey;
+    if (aiProvider && AI_PROVIDERS[aiProvider]) {
+      els.aiProvider.value = aiProvider;
+    }
+    if (aiKey) {
+      els.aiKey.value = aiKey;
+    }
+    if (aiModel) {
+      els.aiModel.value = aiModel;
     }
   } catch (error) {
     console.warn("Could not restore saved keys:", error);
   }
 }
 
-function saveKeysToStorage(githubToken, geminiKey) {
+function saveKeysToStorage({ githubToken, aiProvider, aiKey, aiModel }) {
   try {
     localStorage.setItem(STORAGE_KEYS.githubToken, githubToken);
-    localStorage.setItem(STORAGE_KEYS.geminiKey, geminiKey);
+    localStorage.setItem(STORAGE_KEYS.aiProvider, aiProvider);
+    localStorage.setItem(STORAGE_KEYS.aiKey, aiKey);
+    localStorage.setItem(STORAGE_KEYS.aiModel, aiModel);
   } catch (error) {
     console.warn("Could not persist keys:", error);
   }
@@ -553,23 +632,60 @@ function renderPayloadPreview(compactCommits) {
     commits: shown,
   };
 
-  els.previewMeta.textContent = `Showing ${shown.length}/${compactCommits.length} compact commits before Gemini analysis.`;
+  els.previewMeta.textContent = `Showing ${shown.length}/${compactCommits.length} compact commits before AI analysis.`;
   els.payloadPreview.textContent = JSON.stringify(preview, null, 2);
 }
 
 function buildBatchPrompt(batchCommits) {
-  return `You are analyzing Git commits for a weekly engineering team update.\nYour job is to identify distinct workstreams or updates the team delivered.\n\nCommits:\n${JSON.stringify(batchCommits, null, 2)}\n\nGroup related commits into weekly workstreams. Be technical and specific.\n\nReturn JSON only, in this exact structure:\n{\n  "features": [\n    {\n      "name": "Short workstream name (3-6 words)",\n      "description": "2-3 sentences - what changed, how it works, and why it matters",\n      "commits": ["abc1234", "def5678"],\n      "technologies": ["React", "PostgreSQL"],\n      "impact": "One sentence on business or technical impact"\n    }\n  ]\n}`;
+  return `You are analyzing Git commits for a commit intelligence report.\nYour job is to identify distinct delivery themes, technical changes, operational improvements, or product updates represented by the commits.\n\nCommits:\n${JSON.stringify(batchCommits, null, 2)}\n\nGroup related commits into report sections. Be technical, specific, and useful to product, client, leadership, or audit readers.\n\nReturn JSON only, in this exact structure:\n{\n  "features": [\n    {\n      "name": "Short report section name (3-6 words)",\n      "description": "2-3 sentences - what changed, how it works, and why it matters",\n      "commits": ["abc1234", "def5678"],\n      "technologies": ["React", "PostgreSQL"],\n      "impact": "One sentence on business, user, delivery, risk, or technical impact"\n    }\n  ]\n}`;
 }
 
 function buildMergePrompt(allFeatures) {
-  return `Below is a list of weekly workstreams extracted from multiple batches of Git commits.\nSome may be duplicates or closely related.\n\nMerge duplicates, combine related workstreams, and return a clean final list.\nKeep the most descriptive version of each. Do not invent new information.\n\nFeatures:\n${JSON.stringify({ features: allFeatures }, null, 2)}\n\nReturn JSON only:\n{ "features": [...] }`;
+  return `Below is a list of report sections extracted from multiple batches of Git commits.\nSome may be duplicates or closely related.\n\nMerge duplicates, combine related sections, and return a clean final commit intelligence brief.\nKeep the most descriptive version of each. Do not invent new information.\n\nFeatures:\n${JSON.stringify({ features: allFeatures }, null, 2)}\n\nReturn JSON only:\n{ "features": [...] }`;
 }
 
-async function generateJsonFromGemini({ apiKey, prompt }) {
-  const endpoint = `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const res = await fetchWithRetry(
-    endpoint,
-    {
+function buildAiRequest({ provider, apiKey, model, prompt }) {
+  if (provider === "anthropic") {
+    return {
+      endpoint: ANTHROPIC_API_URL,
+      options: {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 4096,
+          messages: [{ role: "user", content: prompt }],
+        }),
+      },
+    };
+  }
+
+  if (provider === "openai") {
+    return {
+      endpoint: OPENAI_API_URL,
+      options: {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+        }),
+      },
+    };
+  }
+
+  return {
+    endpoint: `${GEMINI_API_BASE}/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    options: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -581,23 +697,49 @@ async function generateJsonFromGemini({ apiKey, prompt }) {
         },
       }),
     },
-    {
-      shouldRetryStatus: isTransientStatus,
-    },
-  );
+  };
+}
+
+function extractAiText(provider, payload) {
+  if (provider === "anthropic") {
+    const content = payload?.content || [];
+    return content
+      .map((part) => (part?.type === "text" ? part.text : ""))
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (provider === "openai") {
+    return payload?.choices?.[0]?.message?.content;
+  }
+
+  return payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+}
+
+async function generateJsonFromAi({ provider, apiKey, model, prompt }) {
+  const providerLabel = getProviderLabel(provider);
+  const { endpoint, options } = buildAiRequest({
+    provider,
+    apiKey,
+    model,
+    prompt,
+  });
+  const res = await fetchWithRetry(endpoint, options, {
+    shouldRetryStatus: isTransientStatus,
+  });
 
   if (!res.ok) {
     const bodyText = await res.text();
     throw new Error(
-      `Gemini API error ${res.status}: ${bodyText.slice(0, 240)}`,
+      `${providerLabel} API error ${res.status}: ${bodyText.slice(0, 240)}`,
     );
   }
 
   const payload = await res.json();
-  const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = extractAiText(provider, payload);
 
   if (!text) {
-    throw new Error("Gemini returned an empty response.");
+    throw new Error(`${providerLabel} returned an empty response.`);
   }
 
   const parsed = safeJsonParse(text);
@@ -614,23 +756,26 @@ async function generateJsonFromGemini({ apiKey, prompt }) {
     }
   }
 
-  throw new Error("Gemini returned malformed JSON.");
+  throw new Error(`${providerLabel} returned malformed JSON.`);
 }
 
-async function analyzeInBatches(commits, apiKey) {
+async function analyzeInBatches({ commits, provider, apiKey, model }) {
   const chunks = chunkArray(commits, BATCH_SIZE);
   const collectedFeatures = [];
+  const providerLabel = getProviderLabel(provider);
 
   for (let i = 0; i < chunks.length; i += 1) {
     const batchNumber = i + 1;
     setStatus(
-      `Analyzing batch ${batchNumber}/${chunks.length}...`,
+      `Analyzing batch ${batchNumber}/${chunks.length} with ${providerLabel}...`,
       58 + (batchNumber / chunks.length) * 28,
     );
 
     try {
-      const result = await generateJsonFromGemini({
+      const result = await generateJsonFromAi({
+        provider,
         apiKey,
+        model,
         prompt: buildBatchPrompt(chunks[i]),
       });
 
@@ -651,10 +796,12 @@ async function analyzeInBatches(commits, apiKey) {
     return collectedFeatures;
   }
 
-  setStatus("Merging duplicate features...", 92);
+  setStatus(`Merging related report sections with ${providerLabel}...`, 92);
   try {
-    const merged = await generateJsonFromGemini({
+    const merged = await generateJsonFromAi({
+      provider,
       apiKey,
+      model,
       prompt: buildMergePrompt(collectedFeatures),
     });
 
@@ -662,7 +809,7 @@ async function analyzeInBatches(commits, apiKey) {
       ? merged.features
       : collectedFeatures;
   } catch (error) {
-    console.warn("Merge call failed, using raw collected features:", error);
+    console.warn("Merge call failed, using raw collected report sections:", error);
     return collectedFeatures;
   }
 }
@@ -679,7 +826,7 @@ function renderFeatureCards(features) {
     const impact = node.querySelector(".feature-impact");
     const techTags = node.querySelector(".tech-tags");
 
-    title.textContent = feature.name || "Untitled feature";
+    title.textContent = feature.name || "Untitled report section";
 
     const commitCount = Array.isArray(feature.commits)
       ? feature.commits.length
@@ -725,7 +872,7 @@ function formatPeriod(commits) {
 
 function buildMarkdownReport({ owner, repo, branch, commits, features }) {
   const lines = [];
-  lines.push(`# Weekly Engineering Update - ${owner}/${repo}`);
+  lines.push(`# Commit Brief - ${owner}/${repo}`);
   lines.push("");
   lines.push(`Branch: ${branch || "N/A"}`);
   lines.push("");
@@ -733,7 +880,7 @@ function buildMarkdownReport({ owner, repo, branch, commits, features }) {
   lines.push("");
 
   features.forEach((feature, index) => {
-    lines.push(`## ${index + 1}. ${feature.name || "Untitled workstream"}`);
+    lines.push(`## ${index + 1}. ${feature.name || "Untitled report section"}`);
     lines.push(feature.description || "No description provided.");
     lines.push(`**Impact:** ${feature.impact || "Not specified."}`);
 
@@ -751,7 +898,12 @@ function buildMarkdownReport({ owner, repo, branch, commits, features }) {
 
 function readBaseInputs() {
   const githubToken = els.githubToken.value.trim();
-  const geminiKey = els.geminiKey.value.trim();
+  const aiProvider = AI_PROVIDERS[els.aiProvider.value]
+    ? els.aiProvider.value
+    : DEFAULT_AI_PROVIDER;
+  const aiKey = els.aiKey.value.trim();
+  const aiModel =
+    els.aiModel.value.trim() || getProviderConfig(aiProvider).defaultModel;
   const author = els.author.value.trim();
   const since = normalizeSinceDate(els.sinceDate.value);
   const until = normalizeUntilDate(els.untilDate.value);
@@ -759,7 +911,9 @@ function readBaseInputs() {
 
   return {
     githubToken,
-    geminiKey,
+    aiProvider,
+    aiKey,
+    aiModel,
     author,
     since,
     until,
@@ -772,9 +926,10 @@ async function onLoadBranches() {
     return;
   }
 
-  const { githubToken, geminiKey, author, repoInput } = readBaseInputs();
+  const { githubToken, aiProvider, aiKey, aiModel, author, repoInput } =
+    readBaseInputs();
 
-  if (!githubToken || !geminiKey || !author || !repoInput) {
+  if (!githubToken || !aiKey || !aiModel || !author || !repoInput) {
     setStatus("Fill all required fields before loading branches.", 0, "error");
     return;
   }
@@ -789,7 +944,7 @@ async function onLoadBranches() {
   }
 
   clearBranchSelectionState(false);
-  saveKeysToStorage(githubToken, geminiKey);
+  saveKeysToStorage({ githubToken, aiProvider, aiKey, aiModel });
   setRunningState(true);
   setStatus("Loading repository branches...", 6);
 
@@ -835,10 +990,18 @@ async function onGenerateReport(event) {
   clearResults();
   els.inlineNote.textContent = "";
 
-  const { githubToken, geminiKey, author, since, until, repoInput } =
-    readBaseInputs();
+  const {
+    githubToken,
+    aiProvider,
+    aiKey,
+    aiModel,
+    author,
+    since,
+    until,
+    repoInput,
+  } = readBaseInputs();
 
-  if (!githubToken || !geminiKey || !author || !repoInput) {
+  if (!githubToken || !aiKey || !aiModel || !author || !repoInput) {
     setStatus("Please fill all required fields.", 0, "error");
     return;
   }
@@ -848,7 +1011,7 @@ async function onGenerateReport(event) {
     return;
   }
 
-  saveKeysToStorage(githubToken, geminiKey);
+  saveKeysToStorage({ githubToken, aiProvider, aiKey, aiModel });
 
   let owner;
   let repo;
@@ -915,12 +1078,17 @@ async function onGenerateReport(event) {
 
     renderPayloadPreview(compactCommits);
 
-    const features = await analyzeInBatches(compactCommits, geminiKey);
+    const features = await analyzeInBatches({
+      commits: compactCommits,
+      provider: aiProvider,
+      apiKey: aiKey,
+      model: aiModel,
+    });
 
     if (features.length === 0) {
-      setStatus("No workstreams extracted from analysis.", 100, "error");
+      setStatus("No report sections extracted from analysis.", 100, "error");
       els.summaryLine.textContent =
-        "Gemini did not return usable weekly workstreams. Try a narrower reporting window.";
+        `${getProviderLabel(aiProvider)} did not return usable report sections. Try a narrower reporting window.`;
       return;
     }
 
@@ -943,9 +1111,9 @@ async function onGenerateReport(event) {
       markdown,
     };
 
-    els.summaryLine.textContent = `Generated ${features.length} weekly workstreams from ${compactCommits.length} commits on branch ${appState.selectedBranch}.`;
+    els.summaryLine.textContent = `Generated ${features.length} report sections from ${compactCommits.length} commits on branch ${appState.selectedBranch}.`;
 
-    setStatus("Report complete.", 100, "ok");
+    setStatus("Commit brief complete.", 100, "ok");
   } catch (error) {
     appState.lastError = error;
     setStatus(
@@ -966,7 +1134,7 @@ async function onCopyMarkdown() {
   try {
     await navigator.clipboard.writeText(appState.currentReport.markdown);
     els.inlineNote.textContent = "Markdown copied to clipboard.";
-    setStatus("Report complete and copied.", 100, "ok");
+    setStatus("Commit brief copied.", 100, "ok");
   } catch {
     els.inlineNote.textContent =
       "Clipboard permission denied. Copy manually from console output.";
@@ -988,7 +1156,7 @@ function buildMarkdownFilename(report) {
   const datePart = new Date().toISOString().slice(0, 10);
   const owner = slugifyFileSegment(report.owner);
   const repo = slugifyFileSegment(report.repo);
-  return `weekly-update-${owner}-${repo}-${datePart}.md`;
+  return `commit-brief-${owner}-${repo}-${datePart}.md`;
 }
 
 function onDownloadMarkdown() {

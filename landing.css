@@ -117,6 +117,25 @@ main {
   max-width: 90%;
 }
 
+.trust-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1.5rem;
+  max-width: 92%;
+}
+
+.trust-strip span {
+  border: 2px solid var(--border);
+  background: var(--bg-secondary);
+  padding: 0.55rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .visual-concept {
   opacity: 0;
   transform: translateY(20px);

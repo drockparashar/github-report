@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Report Generator | Weekly Engineering Update</title>
+    <title>CommitBrief Studio | Commit Intelligence Reports</title>
     <link rel="stylesheet" href="globals.css" />
     <link rel="stylesheet" href="app.css" />
   </head>
   <body>
     <header class="nav-header">
-      <div class="logo">WeeklyUpdate<span>.</span></div>
+      <div class="logo">CommitBrief<span>.</span></div>
       <nav>
         <a href="index.html" class="back-link">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -22,25 +22,42 @@
 
     <main class="dashboard-shell">
       <header class="page-header">
-        <h1>Generator Dashboard</h1>
-        <p>Configure parameters, extract workstreams, and get results.</p>
+        <p class="eyebrow">Commit Intelligence Studio</p>
+        <h1>Turn commit history into a report with a point of view.</h1>
+        <p>Select a repo, author, branch, date range, and AI provider. CommitBrief extracts delivery themes, technical context, and stakeholder impact from the code history your team already creates.</p>
       </header>
 
       <div class="dashboard-grid">
         <aside class="dashboard-sidebar">
           <form id="report-form" class="bento-card form-panel" novalidate>
-            <div class="bento-header">Configuration</div>
+            <div class="bento-header">Report Ingredients</div>
             <div class="form-grid">
               <label class="field" for="github-token">
                 <span>GitHub PAT</span>
                 <input id="github-token" name="githubToken" type="password" autocomplete="off" required placeholder="ghp_..." />
-                <small>Read access for private repos.</small>
+                <small>Read access lets CommitBrief inspect commits and patches.</small>
               </label>
 
-              <label class="field" for="gemini-key">
-                <span>Gemini API Key</span>
-                <input id="gemini-key" name="geminiKey" type="password" autocomplete="off" required placeholder="AIza..." />
-                <small>gemini-2.5-flash analysis.</small>
+              <label class="field" for="ai-provider">
+                <span>AI Provider</span>
+                <select id="ai-provider" name="aiProvider" required>
+                  <option value="gemini">Gemini</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+                <small id="ai-provider-help">Choose the model provider for analysis.</small>
+              </label>
+
+              <label class="field" for="ai-key">
+                <span>AI API Key</span>
+                <input id="ai-key" name="aiKey" type="password" autocomplete="off" required placeholder="Provider API key" />
+                <small id="ai-key-help">Used only in this browser session and saved locally.</small>
+              </label>
+
+              <label class="field" for="ai-model">
+                <span>AI Model</span>
+                <input id="ai-model" name="aiModel" type="text" required />
+                <small id="ai-model-help">Default model for the selected provider.</small>
               </label>
 
               <label class="field" for="repo-url">
@@ -49,8 +66,8 @@
               </label>
 
               <label class="field" for="author-username">
-                <span>GitHub Username</span>
-                <input id="author-username" name="author" type="text" required placeholder="your-username" />
+                <span>Author Filter</span>
+                <input id="author-username" name="author" type="text" required placeholder="github-username" />
               </label>
 
               <div class="date-stack">
@@ -73,7 +90,7 @@
 
             <div class="action-row">
               <button id="load-branches-btn" type="button">Load Branches</button>
-              <button id="generate-btn" type="submit" class="primary" disabled>Generate Report</button>
+              <button id="generate-btn" type="submit" class="primary" disabled>Create Commit Brief</button>
               <p id="inline-note" class="inline-note" role="note"></p>
             </div>
           </form>
@@ -81,7 +98,7 @@
 
         <section class="dashboard-content">
           <div class="bento-card progress-panel" aria-label="Progress">
-            <div class="bento-header">Pipeline Status</div>
+            <div class="bento-header">Report Run</div>
             <div class="progress-meta">
               <span id="status-text">Ready to run.</span>
               <span id="progress-text">0%</span>
@@ -92,14 +109,14 @@
           </div>
 
           <div class="bento-card preview-panel" aria-label="Payload preview" style="display: none;" id="preview-container">
-            <div class="bento-header">Payload Preview</div>
+            <div class="bento-header">Source Evidence</div>
             <p id="preview-meta" class="summary-line">Preview appears after extraction.</p>
             <pre id="payload-preview" class="json-preview" tabindex="0">[]</pre>
           </div>
 
-          <div class="bento-card output-panel" aria-label="Generated features">
-            <div class="bento-header">Weekly Workstreams</div>
-            <p id="summary-line" class="summary-line">No report generated yet.</p>
+          <div class="bento-card output-panel" aria-label="Generated commit brief">
+            <div class="bento-header">Generated Brief</div>
+            <p id="summary-line" class="summary-line">No commit intelligence brief generated yet.</p>
             <div class="output-actions">
               <button id="download-markdown-btn" type="button" disabled>Download Markdown</button>
               <button id="copy-markdown-btn" type="button" disabled>Copy as Markdown</button>
@@ -111,7 +128,7 @@
     </main>
 
     <footer class="minimal-footer">
-      <p>© 2026 WeeklyUpdate Generator. Minimalist design system.</p>
+      <p>© 2026 CommitBrief. Turn development activity into useful reports.</p>
     </footer>
 
     <template id="feature-card-template">

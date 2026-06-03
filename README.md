@@ -1,6 +1,8 @@
-# GitHub Work Reporting Suite
+# CommitBrief
 
-This repository now contains three implementations of the reporting workflow:
+CommitBrief turns GitHub commit history into decision-ready reports: release narratives, delivery recaps, client updates, audit evidence, and stakeholder briefs.
+
+This repository contains three implementations of the commit intelligence workflow:
 
 1. Browser app for single-repo interactive reporting
 2. Terminal CLI for branch-scoped report generation
@@ -8,8 +10,8 @@ This repository now contains three implementations of the reporting workflow:
 
 ## Project Structure
 
-- `index.html`, `app.js`, `style.css`
-  - Original browser-based report generator
+- `index.html`, `app.html`, `app.js`, `app.css`
+  - Browser-based CommitBrief studio for single-repo report generation
 - `github-report-cli/`
   - Node.js CLI for interactive or non-interactive report generation
 - `github-report-weekly-service/`
@@ -24,13 +26,13 @@ The browser app supports:
 - repo + branch selection
 - optional since/until filters
 - compact payload preview
-- Gemini batch analysis with merge deduplication
+- configurable AI provider analysis for report sections, themes, and impact
 - markdown copy + download
 
 Run:
 
 1. Open `index.html` in browser or VS Code Live Server.
-2. Fill inputs, load branches, select branch, generate report.
+2. Fill inputs, load branches, select a branch, and generate a commit intelligence brief.
 
 ### 2) CLI App (stable)
 
@@ -78,11 +80,11 @@ Across implementations, the core report logic keeps these limits:
 - max files: 8 per commit
 - max patch chars: 500 per file
 - max message chars: 300
-- Gemini batch size: 6 commits
+- AI analysis batch size: 6 commits
 
 Reliability behavior:
 
-- transient GitHub/Gemini retry with exponential backoff
+- transient GitHub/AI provider retry with exponential backoff
 - malformed batch JSON is skipped (processing continues)
 - final merge call is skipped if only one batch exists
 
